@@ -47,29 +47,25 @@ const MunicipalitiesIntent = {
     const municipalities = slots?.municipality?.value;
 
     // find give slot is match on catalog
-    console.log(municipalities);
     if (municipalities) {
       const municipalitiesData = await axios(municipalitiesCatalog);
-      console.log(municipalitiesData);
-      const muniIndex = municipalitiesData.data.features.findIndex(
-        (item) => item.properties.nomgeo == municipalities.trim()
-      );
-      console.log(muniIndex);
-
+      // console.log(municipalitiesData.json());
+      let findData = "";
+      municipalitiesData?.data?.features.forEach((item) => {
+        if (
+          item.properties.nomgeo.toLowerCase() === municipalities.toLowerCase()
+        ) {
+          findData = item.properties;
+        }
+      });
       let res = "";
-      if (muniIndex === -1) {
-        return handlerInput.responseBuilder
-          .speak(`Your given municipalities data not found`)
-          .reprompt(`Your given municipalities data not found`)
-          .withSimpleCard(`Your given municipalities data not found`)
-          .getResponse();
-      } else if (muniIndex >= 0) {
-        const cve_munc =
-          municipalitiesData.data.features[muniIndex].properties.cvegeo;
+      if (findData) {
+        // const cve_munc =
+        // municipalitiesData.data.features[muniIndex].properties.cvegeo;
         res = await axios.get(
-          `https://layers.carto.zone/geoserver/demo_cartozone/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=demo_cartozone%3Acpv2020_municipios&maxFeatures=50&outputFormat=application%2Fjson&CQL_FILTER=cve_munc=${cve_munc}`
+          `https://layers.carto.zone/geoserver/demo_cartozone/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=demo_cartozone%3Acpv2020_municipios&maxFeatures=50&outputFormat=application%2Fjson&CQL_FILTER=cve_munc=${findData.cvegeo}`
         );
-        console.log(cve_munc);
+        // console.log(cve_munc);
         if (res.data?.features.length > 0 && res.data) {
           const data = {
             pop_tot: res.data?.features[0]?.properties?.pob_tot,
@@ -89,9 +85,14 @@ const MunicipalitiesIntent = {
             .withSimpleCard(`Data not founded`)
             .getResponse();
         }
+      } else {
+        return handlerInput.responseBuilder
+          .speak(`Your given municipalities data not found`)
+          .reprompt(`Your given municipalities data not found`)
+          .withSimpleCard(`Your given municipalities data not found`)
+          .getResponse();
       }
     } else {
-      console.log("check slot value is not valid");
       return handlerInput.responseBuilder
         .speak(`please tell me municipality name`)
         .reprompt(`please tell me municipality name`)
@@ -110,29 +111,63 @@ const StateIntent = {
     // its a dummy audio sound
     // "nom_ent":"México","cve_munc":"15022","nomgeo":"Cocotitlán"
     const slots = handlerInput?.requestEnvelope?.request?.intent?.slots;
-
     const state = slots?.state?.value;
+    console.log(state);
 
     const stateData = await axios(stateCatalog);
-    console.log("state Data-->", stateData.features);
-
-    const res = await axios.get(
-      state
-        ? `https://layers.carto.zone/geoserver/demo_cartozone/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=demo_cartozone%3Acpv2020_estados&maxFeatures=50&outputFormat=application%2Fjson&CQL_FILTER=cveent=${state}`
-        : statePolygonDataAPI
-    );
-    // console.log(res.data);
-    const data = {
-      pop_tot: res?.data?.features[0].properties?.pob_tot,
-      nom_ent: res?.data?.features[0].properties?.nom_ent,
-      cve_munc: res?.data?.features[0].properties?.cve_munc,
-      nomgeo: res?.data?.features[0].properties?.nomgeo,
-    };
-    return handlerInput.responseBuilder
-      .speak(`Population of ${data.nomgeo} is ${data.pop_tot}`)
-      .reprompt(`Population of ${data.nomgeo} is ${data.pop_tot}`)
-      .withSimpleCard(`Population of ${data.nomgeo} is ${data.pop_tot}`)
-      .getResponse();
+    if (stateData) {
+      const stateData = await axios(stateCatalog);
+      // console.log(municipalitiesData.json());
+      let findData = "";
+      stateData?.data?.features.forEach((item) => {
+        console.log(
+          `${item.properties.nomgeo.toLowerCase()}===${state.toLowerCase()}`
+        );
+        if (item.properties.nomgeo.toLowerCase() === state.toLowerCase()) {
+          console.log(item.properties);
+          findData = item.properties;
+        }
+      });
+      let res = "";
+      if (findData) {
+        // const cve_munc =
+        // municipalitiesData.data.features[muniIndex].properties.cvegeo;
+        res = await axios.get(
+          `https://layers.carto.zone/geoserver/demo_cartozone/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=demo_cartozone%3Acpv2020_estados&maxFeatures=50&outputFormat=application%2Fjson&CQL_FILTER=cveent=${findData.cveent}`
+        );
+        // console.log(cve_munc);
+        if (res.data?.features.length > 0 && res.data) {
+          const data = {
+            pop_tot: res.data?.features[0]?.properties?.pob_tot,
+            nom_ent: res.data?.features[0]?.properties?.nom_ent,
+            cve_munc: res.data?.features[0]?.properties?.cve_munc,
+            nomgeo: res.data?.features[0]?.properties?.nomgeo,
+          };
+          return handlerInput.responseBuilder
+            .speak(`Population of ${data?.nomgeo} is ${data?.pop_tot}`)
+            .reprompt(`Population of ${data?.nomgeo} is ${data?.pop_tot}`)
+            .withSimpleCard(`Population of ${data?.nomgeo} is ${data?.pop_tot}`)
+            .getResponse();
+        } else {
+          return handlerInput.responseBuilder
+            .speak(`Data not found`)
+            .reprompt(`Data not found`)
+            .withSimpleCard(`Data not found`)
+            .getResponse();
+        }
+      } else {
+        return handlerInput.responseBuilder
+          .speak(`Your given state data not found`)
+          .reprompt(`Your given state data not found`)
+          .withSimpleCard(`Your given state data not found`)
+          .getResponse();
+      }
+    } else {
+      return handlerInput.responseBuilder
+        .speak(`please tell me state name`)
+        .reprompt(`please tell me state name`)
+        .getResponse();
+    }
   },
 };
 
